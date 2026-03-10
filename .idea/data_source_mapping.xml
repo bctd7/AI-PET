@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/sql/ai-pet-schema.sql" value="af00e286-2a6b-4a7f-ba38-449bc64b7ded" />
+    <file url="file://$PROJECT_DIR$/sql/data.sql" value="af00e286-2a6b-4a7f-ba38-449bc64b7ded" />
+  </component>
+</project>

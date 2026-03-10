@@ -1,0 +1,27 @@
+# searxng/settings.yml
+use_default_settings: true
+server:
+  secret_key: "51e03b30386f0d706f149c64c226a29d0de76581a5a8a51cb96acfc9d44f9388"
+search:
+  formats:
+    - html
+    - json  # 开启 JSON 支持，MCP 才能读数据
+
+# 指定使用百度，并关闭容易超时的引擎
+engines:
+  - name: baidu
+    engine: baidu
+    shortcut: bd
+    disabled: false
+    timeout: 6.0
+    categories: general
+  - name: google
+    disabled: true
+  - name: duckduckgo
+    disabled: true
+  - name: brave
+    disabled: true
+  - name: startpage
+    disabled: true
+  - name: wikipedia
+    disabled: true

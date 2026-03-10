@@ -1,0 +1,105 @@
+version: '3.5'
+
+services:
+  # --- 1. MySQL (核心底座) ---
+  mysql:
+    image: mysql:8.0
+    container_name: pet-mysql # 增加前缀
+    restart: always
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - .sql:/docker-entrypoint-initdb.d
+    networks:
+      - pet-backend-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- 2. SearXNG (搜索服务) ---
+  searxng:
+    image: searxng/searxng:latest
+    container_name: pet-searxng-engine # 增加前缀
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_SETTINGS_SEARCH_FORMATS=html,json
+      - SEARXNG_SETTINGS_SERVER_LIMITER=false
+      - SEARXNG_SETTINGS_SERVER_SECRET=${SEARXNG_SECRET:-changeme_123456}
+    networks:
+      - pet-backend-network
+
+  # --- 3. Milvus 组件 A: Etcd (改名 pet-etcd) ---
+  pet-etcd:
+    container_name: pet-milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - ./pet_volumes/etcd:/etcd # 存放路径也独立出来
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    networks:
+      - pet-backend-network
+
+  # --- 4. Milvus 组件 B: Minio  ---
+  pet-minio:
+    container_name: pet-milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - ./pet_volumes/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    networks:
+      - pet-backend-network
+
+  # --- 5. Milvus 数据库主体 ---
+  pet-milvus-standalone:
+    container_name: pet-milvus-standalone
+    image: milvusdb/milvus:v2.4.15
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: pet-etcd:2379
+      MINIO_ADDRESS: pet-minio:9000
+    volumes:
+      - ./pet_volumes/milvus:/var/lib/milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "pet-etcd"
+      - "pet-minio"
+    networks:
+      - pet-backend-network
+
+# --- 资源定义 ---
+networks:
+  pet-backend-network: # 以你的 MySQL 配置为准的网络名
+    driver: bridge
+
+volumes:
+  mysql-data: # MySQL 持久化
