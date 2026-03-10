@@ -10,6 +10,9 @@ from data_preparation.create_vector_db_collection import create_vector_collectio
 from data_preparation.model import VARCHAR_LONG, VARCHAR_MED, VARCHAR_SHORT
 from retrieval.bm25 import build_bm25_sparse_vectors_for_milvus
 
+# Milvus 单次 insert 条数上限，超出易失败或截断；按批写入避免超限
+INSERT_BATCH_SIZE = 2000
+
 
 def insert_chunks_by_npc_role_type(
     chunks: List[Document],
@@ -63,6 +66,8 @@ def insert_chunks_by_npc_role_type(
         db_name=config.db_name,
     )
     try:
-        client.insert(collection_name=collection_name, data=rows)
+        for start in range(0, len(rows), INSERT_BATCH_SIZE):
+            batch = rows[start : start + INSERT_BATCH_SIZE]
+            client.insert(collection_name=collection_name, data=batch)
     finally:
         client.close()

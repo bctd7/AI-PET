@@ -19,3 +19,5 @@ torch
 nltk
 httpx
 pypdf
+pymilvus[model]
+sentence-transformers

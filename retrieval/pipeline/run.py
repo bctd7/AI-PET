@@ -11,7 +11,7 @@ from langchain_core.documents import Document
 
 from retrieval import bm25, rrf
 from retrieval.bge import run_bge_rerank
-from retrieval.dense import _build_dense_ip_ann_request
+from retrieval.dense import _build_dense_cosine_ann_request
 
 from retrieval.pipeline.config import (
     OUTPUT_FIELDS,
@@ -35,9 +35,9 @@ def _initial_retrieve(
     npc_role_type: str,
     limit: int = RRF_INITIAL_LIMIT,
 ) -> list[RawChunk]:
-    """初检：BM25 + Dense(IP) → RRF，返回带 parent_id/chunk_id/chunk_index 的 RawChunk 列表。"""
+    """初检：BM25 + Dense(COSINE) → RRF，返回带 parent_id/chunk_id/chunk_index 的 RawChunk 列表。"""
     try:
-        dense_req = _build_dense_ip_ann_request(query, limit=limit)
+        dense_req = _build_dense_cosine_ann_request(query, limit=limit)
         bm25_req = bm25.build_bm25_ann_request(query, limit=limit, npc_role_type=npc_role_type)
         raw = rrf.run_rrf_hybrid_search(
             collection_name=collection_name,
@@ -101,6 +101,19 @@ def _rerank_merged_segments(
                 score,
             )
         )
+    # 流水线层：打出重排后的段落与分数，便于直观观察
+    if result:
+        logger.info(
+            "[pipeline BGE 重排] query=%s | 合并段数=%d -> 重排后=%d 条",
+            query[:60] + "..." if len(query) > 60 else query,
+            len(segments),
+            len(result),
+        )
+        for i, (seg, score) in enumerate(result):
+            content_preview = (seg.content or "").strip().replace("\n", " ")[:100]
+            if len((seg.content or "").strip()) > 100:
+                content_preview += "..."
+            logger.info("[pipeline BGE 重排]  #%d score=%.4f source=%s | %s", i + 1, score, seg.source, repr(content_preview))
     return result
 
 
