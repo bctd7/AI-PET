@@ -10,6 +10,7 @@ class LocalRecipeHit(BaseModel):
     content: str = Field(..., description="文本内容，如 page_content")
     source: str = Field("", description="来源标识")
     score: float = Field(0.0, description="相关性分数，越高越相关")
+    chunk_indices: list[int] = Field(default_factory=list, description="该段对应的 chunk_index 列表")
 
 
 class SubQueryResult(BaseModel):

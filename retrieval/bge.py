@@ -13,8 +13,8 @@ def _get_reranker() -> CrossEncoderRerankFunction:
     global _RERANKER
     if _RERANKER is None:
         _RERANKER = CrossEncoderRerankFunction(
-            model_name=r"C:\Users\27902\models\ms-marco-MiniLM-L6-v2",  # 本地目录
-            device="cpu",
+            model_name=r"C:\Users\27902\models\bge-reranker-v2-m3",
+            device="cuda",
         )
         logger.info("BGE CrossEncoder reranker loaded (singleton).")
     return _RERANKER

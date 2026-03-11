@@ -79,7 +79,7 @@ def rewrite_and_decompose(
         "1) 严禁推测，不得添加输入中未出现的新事实；\n"
         "2) 句意等值，重写后知识范畴与输入保持一致；\n"
         "3) 字数敏感，不做解释性扩写，保持凝练；\n"
-        "4) 分解粒度：输出 2-5 条可独立检索/执行的子问题；\n"
+        "4) 分解粒度：输出 2-3 条可独立检索/执行的子问题；\n"
         '5) 仅输出 JSON 数组字符串，如 ["子问题1","子问题2"]，禁止任何额外文本。'
     )
     logger.info("[rewrite] 调用 LLM 进行 rewrite, role_type=%s", role_type)
@@ -95,7 +95,7 @@ def rewrite_and_decompose(
     try:
         parsed = json.loads(raw)
         if isinstance(parsed, list):
-            result = [str(item).strip() for item in parsed if str(item).strip()]
+            result = [str(item).strip() for item in parsed if str(item).strip()][:3]
             logger.info("[rewrite] JSON 解析成功，子问题列表: %s", result)
             return result
     except json.JSONDecodeError:
@@ -103,7 +103,7 @@ def rewrite_and_decompose(
 
     # 兜底：当模型未严格返回 JSON 时，按行拆分
     lines = [line.strip("- ").strip() for line in raw.splitlines() if line.strip()]
-    result = lines if lines else [query_content]
+    result = (lines[:3] if lines else [query_content])
     logger.info("[rewrite] 兜底子问题列表: %s", result)
     return result
 
@@ -135,6 +135,9 @@ def filter_and_clean_local_results(
         return ""
 
     logger.info("[rewrite] 调用 LLM 清洗合并内容, raw_content 长度=%d", len(raw_content))
+    print("========== 给最终答案库清洗的数据（raw_content）==========")
+    print(raw_content)
+    print("========== 以上为给 LLM 的答案库清洗输入 ==========")
     prompt_text = """[NPC 人设/描述]
 {system_desc}
 

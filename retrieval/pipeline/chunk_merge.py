@@ -23,22 +23,31 @@ def expand_and_fetch_neighbors(
     collection_name: str,
 ) -> dict[str, list[RawChunk]]:
     """
-    对每个 parent 下已命中的 chunk_index 向上下各扩 1，从 Milvus 按条件查询补全。
+    对每个 parent 下每个命中的 chunk_index 单独向上下各扩 1，再统一去重查询补全。
     返回仍按 parent_id 分组，每组内为扩展后的 chunk 列表（已按 chunk_index 排序）。
     """
     expanded: dict[str, list[RawChunk]] = {}
     for parent_id, chunks in grouped.items():
         if not chunks:
             continue
-        indices = {c.chunk_index for c in chunks}
-        lo = min(indices) - 1
-        hi = max(indices) + 1
-        if lo < 0:
-            lo = 0
+
+        target_indices: set[int] = set()
+        for c in chunks:
+            idx = c.chunk_index
+            if idx - 1 >= 0:
+                target_indices.add(idx - 1)
+            target_indices.add(idx)
+            target_indices.add(idx + 1)
+
+        if not target_indices:
+            expanded[parent_id] = sorted(chunks, key=lambda x: x.chunk_index)
+            continue
+
         real_parent = parent_id if parent_id != "_empty_" else ""
+        indices_expr = ", ".join(str(i) for i in sorted(target_indices))
         filter_expr = (
             f'parent_id == "{escape_milvus_string(real_parent)}" '
-            f"&& chunk_index >= {lo} && chunk_index <= {hi}"
+            f"&& chunk_index in [{indices_expr}]"
         )
         rows = query_by_filter(collection_name, filter_expr, OUTPUT_FIELDS)
         list_for_parent: list[RawChunk] = []

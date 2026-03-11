@@ -15,9 +15,11 @@ langchain-experimental
 pymilvus==2.5.11
 pymilvus.model==0.3.2
 jieba
-torch
 nltk
 httpx
 pypdf
 pymilvus[model]
 sentence-transformers
+--extra-index-url https://download.pytorch.org/whl/cu121
+torch
+torchvision

@@ -130,7 +130,8 @@ def run_retrieve_pipeline(
     执行通用检索流水线：
     初检(多取) → 按 parent_id 分组 → 同 parent 内 ±1 扩展 → 合并重叠区间 → 对合并段重排。
 
-    返回 list[dict]，每项含 "content", "source", "score"，便于转为 LocalRecipeHit 或直接使用。
+    返回 list[dict]，每项含 "content", "source", "score", "chunk_indices"，
+    便于转为 LocalRecipeHit 或直接使用。
     若任一步骤无结果，返回空列表。
     """
     chunks = _initial_retrieve(query, collection_name, npc_role_type, limit=initial_limit)
@@ -155,6 +156,11 @@ def run_retrieve_pipeline(
         query, segments, top_k=rerank_top_k, min_score=rerank_min_score
     )
     return [
-        {"content": seg.content, "source": seg.source, "score": score}
+        {
+            "content": seg.content,
+            "source": seg.source,
+            "score": score,
+            "chunk_indices": seg.chunk_indices,
+        }
         for seg, score in reranked
     ]

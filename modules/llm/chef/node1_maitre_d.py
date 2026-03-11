@@ -27,6 +27,8 @@ def _collection_name(npc_role_type: str) -> str:
 
 # 至少几条结果视为「有足够回答」，不足则标为 too_few 供下一节点补搜
 MIN_HITS_FOR_HAS_RESULTS = 2
+# 每个子问题最多保留的本地命中条数（避免单子问题召回过多噪声）
+MAX_HITS_PER_SUBQUERY = 3
 
 
 def _retrieve_and_rerank_one(
@@ -54,9 +56,10 @@ def _retrieve_and_rerank_one(
             content=r["content"],
             source=r.get("source", ""),
             score=float(r.get("score", 0.0)),
+            chunk_indices=list(r.get("chunk_indices", [])),
         )
         for r in (rows or [])
-    ]
+    ][:MAX_HITS_PER_SUBQUERY]
 
     if len(hits) == 0:
         status = "no_answer"
