@@ -51,6 +51,7 @@ def get_latest_dialogue(
     summaries = [str(r[0]).strip() for r in rows if r and str(r[0]).strip()]
     if not summaries:
         return ""
+
     summaries.reverse()  # 转为旧->新，便于模型理解
     return "\n".join(f"- {s}" for s in summaries)
 
